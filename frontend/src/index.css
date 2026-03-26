@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #06060a; }
+
+textarea {
+  background: rgba(255,255,255,0.05) !important;
+  color: #fff !important;
+  caret-color: #f59e0b !important;
+}
+
+textarea::placeholder {
+  color: rgba(255,255,255,0.2) !important;
+}
+
+textarea::-webkit-scrollbar {
+  display: none;
+}
+
+textarea:focus {
+  border-color: rgba(245,158,11,0.4) !important;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); max-height: 0; }
+  to { opacity: 1; transform: translateY(0); max-height: 500px; }
+}
+
+.animate-slideDown {
+  animation: slideDown .3s ease both;
+}
+
+.space-y-2 > *, .space-y-3 > * {
+  animation: fadeUp .3s ease both;
+}
+
+.space-y-3 > *:nth-child(1) { animation-delay: 0ms; }
+.space-y-3 > *:nth-child(2) { animation-delay: 50ms; }
+.space-y-3 > *:nth-child(3) { animation-delay: 100ms; }
+.space-y-3 > *:nth-child(4) { animation-delay: 150ms; }
+.space-y-3 > *:nth-child(5) { animation-delay: 200ms; }
