@@ -42,7 +42,7 @@ const upload = multer({
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Upload endpoint
@@ -315,6 +315,79 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (error) {
     console.error("API proxy error:", error);
+    res.status(500).json({ error: "Internal server error connecting to Gemini API" });
+  }
+});
+
+// ═══ IMAGE-BASED MACRO CALCULATION ═══
+app.post('/api/chat-image', async (req, res) => {
+  try {
+    const { base64Data, mimeType } = req.body;
+
+    if (!base64Data || !mimeType) {
+      return res.status(400).json({ error: 'Missing image data' });
+    }
+
+    const systemInstruction = `You are a nutrition calculator. Analyze the food in this image and estimate macros. Respond ONLY with a JSON object: {"calories":500,"protein":30,"carbs":60,"fat":15,"fiber":5,"items":[{"name":"chicken breast","qty":"200g","cal":330,"protein":62,"carbs":0,"fat":7}]}. Identify each food item visible, estimate portions, and calculate macros. Be accurate with Indian and international foods. No markdown, just pure JSON.`;
+
+    const requestBody = {
+      contents: [{
+        role: "user",
+        parts: [
+          { text: "Identify all food items in this image and calculate detailed macros for the entire meal." },
+          { inlineData: { mimeType, data: base64Data } }
+        ]
+      }],
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      generationConfig: {
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json"
+      }
+    };
+
+    const modelsToTry = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-flash-latest",
+      "gemini-2.5-pro",
+    ];
+
+    let lastErrorData = null;
+    let lastStatus = 500;
+
+    for (const model of modelsToTry) {
+      const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+      try {
+        const response = await fetch(GEMINI_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          return res.json({ text, usedModel: model });
+        }
+
+        lastErrorData = data;
+        lastStatus = response.status;
+        console.warn(`[Image API] Model ${model} failed (${lastStatus}):`, data?.error?.message);
+
+        if (lastStatus === 400 && data?.error?.details?.[0]?.reason === "API_KEY_INVALID") {
+          break;
+        }
+      } catch (fetchErr) {
+        console.warn(`[Image API] Fetch error for model ${model}:`, fetchErr.message);
+      }
+    }
+
+    return res.status(lastStatus).json(lastErrorData || { error: "All fallback models failed." });
+
+  } catch (error) {
+    console.error("Image API proxy error:", error);
     res.status(500).json({ error: "Internal server error connecting to Gemini API" });
   }
 });

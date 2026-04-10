@@ -18,6 +18,21 @@ export async function askGemini(prompt, systemPrompt = "") {
   }
 }
 
+export async function askGeminiWithImage(base64Data, mimeType) {
+  try {
+    const res = await fetch(`${API}/chat-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base64Data, mimeType }),
+    });
+    const data = await res.json();
+    return data.text || "";
+  } catch (e) {
+    console.error("Image API error:", e);
+    return null;
+  }
+}
+
 // ═══ Meals ═══
 
 export async function fetchAllMeals() {

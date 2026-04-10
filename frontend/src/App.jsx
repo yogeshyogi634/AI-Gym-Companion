@@ -4,7 +4,7 @@ import Ring from "./components/Ring";
 import Calendar from "./components/Calendar";
 import WCard from "./components/WCard";
 import { fmtKey, fmtNice, same } from "./utils/dateUtils";
-import { askGemini, fetchAllMeals, saveMeal, deleteMeal as apiDeleteMeal, fetchAllWorkouts, saveWorkoutDone } from "./api";
+import { askGemini, askGeminiWithImage, fetchAllMeals, saveMeal, deleteMeal as apiDeleteMeal, fetchAllWorkouts, saveWorkoutDone } from "./api";
 import { getWorkoutForDate } from "./data/workouts";
 
 import "./index.css";
@@ -21,6 +21,19 @@ export default function App() {
   const [showCal, setShowCal] = useState(false);
   const [dayPlan, setDayPlan] = useState(() => getWorkoutForDate(new Date()));
   const [theme, setTheme] = useState(() => localStorage.getItem("forge_theme") || "dark");
+
+  const fileRefs = {
+    morning: React.useRef(null),
+    afternoon: React.useRef(null),
+    night: React.useRef(null),
+    postworkout: React.useRef(null),
+  };
+  const cameraRefs = {
+    morning: React.useRef(null),
+    afternoon: React.useRef(null),
+    night: React.useRef(null),
+    postworkout: React.useRef(null),
+  };
 
   const dk = fmtKey(sel);
   const dd = all[dk] || {};
@@ -93,6 +106,45 @@ export default function App() {
         alert("Failed to parse the response! Check the console. Raw output was: " + r.slice(0, 100) + "...");
       }
     }
+  }
+
+  async function calcFromImage(slot, file) {
+    if (!file) return;
+    setLoadSlot(slot);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(",")[1];
+      const mimeType = file.type;
+      const r = await askGeminiWithImage(base64, mimeType);
+      setLoadSlot(null);
+      if (r) {
+        try {
+          let clean = r.trim();
+          const first = clean.indexOf("{");
+          const last = clean.lastIndexOf("}");
+          if (first !== -1 && last !== -1) clean = clean.substring(first, last + 1);
+          const p = JSON.parse(clean);
+          const foodNames = (p.items || []).map(it => `${it.name} (${it.qty})`).join(", ");
+          const mealData = { text: foodNames || "Photo meal", macros: p, items: p.items || [] };
+          setAll(prev => ({ ...prev, [dk]: { ...(prev[dk] || {}), [slot]: mealData } }));
+          saveMeal(dk, slot, mealData);
+        } catch (e) {
+          console.error("Failed parsing image response:", e, "\nRaw:", r);
+          alert("Failed to parse the response! Raw: " + r.slice(0, 100) + "...");
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function editMeal(slot) {
+    const sv = dd[slot];
+    if (!sv) return;
+    setInputs(prev => ({ ...prev, [slot]: sv.text }));
+    setAll(prev => {
+      const u = { ...prev }; if(u[dk]) { const d={...u[dk]}; delete d[slot]; u[dk]=d; } return u;
+    });
+    apiDeleteMeal(dk, slot);
   }
 
   function removeMeal(slot) {
@@ -193,7 +245,10 @@ export default function App() {
                     <div className="px-4 pb-3.5 pt-1.5">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-[13px] leading-relaxed" style={{opacity:"var(--muted)"}}>{sv.text}</p>
-                        <button onClick={()=>removeMeal(s.key)} className="hover:text-red-400 transition-all p-1 shrink-0" style={{opacity:0.2}}><I.Trash/></button>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={()=>editMeal(s.key)} className="hover:text-amber-400 transition-all p-1" style={{opacity:0.3}} title="Edit"><I.Pencil/></button>
+                          <button onClick={()=>removeMeal(s.key)} className="hover:text-red-400 transition-all p-1" style={{opacity:0.3}} title="Delete"><I.Trash/></button>
+                        </div>
                       </div>
                       {sv.items?.length>0 && (
                         <div className="mt-2.5 space-y-1">
@@ -226,13 +281,33 @@ export default function App() {
                           className="flex-1 rounded-xl px-3 py-2.5 resize-none outline-none transition-colors text-sm"
                           style={{border:`1px solid var(--input-border)`}}
                           />
-                        <button onClick={()=>calc(s.key)}
-                          disabled={!inputs[s.key].trim()||loadSlot===s.key}
-                          className="shrink-0 h-10 w-10 rounded-xl bg-gradient-to-b from-amber-400 to-orange-500 text-black flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
-                          style={{boxShadow:"0 4px 16px var(--shadow-glow)"}}>
-                          {loadSlot===s.key?<I.Loader/>:<I.Sparkle/>}
-                        </button>
+                        <div className="flex flex-col gap-1.5">
+                          <button onClick={()=>calc(s.key)}
+                            disabled={!inputs[s.key].trim()||loadSlot===s.key}
+                            className="shrink-0 h-10 w-10 rounded-xl bg-gradient-to-b from-amber-400 to-orange-500 text-black flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
+                            style={{boxShadow:"0 4px 16px var(--shadow-glow)"}}>
+                            {loadSlot===s.key?<I.Loader/>:<I.Sparkle/>}
+                          </button>
+                          <div className="flex gap-1.5">
+                            <button onClick={()=>cameraRefs[s.key].current?.click()}
+                              disabled={loadSlot===s.key}
+                              className="shrink-0 h-10 w-[19px] flex-1 rounded-lg flex items-center justify-center disabled:opacity-25 transition-all active:scale-95"
+                              style={{background:"var(--subtle)", color:"var(--text)"}}>
+                              <I.Camera/>
+                            </button>
+                            <button onClick={()=>fileRefs[s.key].current?.click()}
+                              disabled={loadSlot===s.key}
+                              className="shrink-0 h-10 w-[19px] flex-1 rounded-lg flex items-center justify-center disabled:opacity-25 transition-all active:scale-95"
+                              style={{background:"var(--subtle)", color:"var(--text)"}}>
+                              <I.Image/>
+                            </button>
+                          </div>
+                        </div>
                       </div>
+                      <input type="file" accept="image/*" capture="environment" ref={cameraRefs[s.key]} className="hidden"
+                        onChange={e=>{calcFromImage(s.key, e.target.files[0]); e.target.value="";}}/>
+                      <input type="file" accept="image/*" ref={fileRefs[s.key]} className="hidden"
+                        onChange={e=>{calcFromImage(s.key, e.target.files[0]); e.target.value="";}}/>
                     </div>
                   )}
                 </div>
