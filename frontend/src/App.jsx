@@ -159,16 +159,97 @@ export default function App() {
   const isT = same(sel, new Date());
 
   return (
-    <div className="min-h-screen transition-colors duration-300" style={{ background:"var(--bg-page)", color:"var(--text)", fontFamily:"'DM Sans',sans-serif" }}>
+    <div className="h-screen overflow-hidden transition-colors duration-300 flex flex-col" style={{ background:"var(--bg-page)", color:"var(--text)", fontFamily:"'DM Sans',sans-serif" }}>
       {/* Ambient */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full" style={{opacity:"var(--ambient-1)", background:"radial-gradient(circle,#f59e0b,transparent 70%)"}}/>
         <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full" style={{opacity:"var(--ambient-2)", background:"radial-gradient(circle,#22c55e,transparent 70%)"}}/>
       </div>
 
-      <div className="relative max-w-lg mx-auto px-4 py-5 pb-24">
+      {/* Decorative gym icons - left side */}
+      <div className="fixed left-0 top-0 bottom-0 pointer-events-none hidden lg:block" style={{width:"calc((100% - 32rem) / 2)", opacity:"var(--deco-opacity)"}}>
+        {/* Dumbbell */}
+        <svg className="absolute" style={{top:"8%",left:"20%",transform:"rotate(-15deg)"}} width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6.5 6.5h11M6.5 17.5h11"/>
+          <rect x="2" y="4.5" width="3" height="6" rx="1"/><rect x="2" y="13.5" width="3" height="6" rx="1"/>
+          <rect x="19" y="4.5" width="3" height="6" rx="1"/><rect x="19" y="13.5" width="3" height="6" rx="1"/>
+          <line x1="3.5" y1="10.5" x2="3.5" y2="13.5"/><line x1="20.5" y1="10.5" x2="20.5" y2="13.5"/>
+        </svg>
+        {/* Heart */}
+        <svg className="absolute" style={{top:"22%",left:"55%",transform:"rotate(10deg)"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        {/* Flame */}
+        <svg className="absolute" style={{top:"35%",left:"15%",transform:"rotate(-5deg)"}} width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+        {/* Protein shaker */}
+        <svg className="absolute" style={{top:"48%",left:"50%",transform:"rotate(8deg)"}} width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="7" y="8" width="10" height="14" rx="2"/><path d="M7 12h10"/><path d="M9 4h6l1 4H8l1-4z"/><path d="M10 12v4"/><path d="M14 12v4"/>
+        </svg>
+        {/* Timer */}
+        <svg className="absolute" style={{top:"62%",left:"25%",transform:"rotate(-12deg)"}} width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/><path d="M12 2v3"/>
+        </svg>
+        {/* Weight plate */}
+        <svg className="absolute" style={{top:"76%",left:"55%",transform:"rotate(20deg)"}} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/>
+        </svg>
+        {/* Running shoe */}
+        <svg className="absolute" style={{top:"90%",left:"20%",transform:"rotate(-8deg)"}} width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 18h18v1H3z"/><path d="M5 18l1-6c.2-1 1-2 2-2h2l1 1h3c2 0 4 1.5 5 3l1 2v2"/>
+          <path d="M8 10l-1-3c0-1 .5-2 1.5-2s2 1 2 2l-.5 3"/>
+        </svg>
+        {/* Small dumbbell */}
+        <svg className="absolute" style={{top:"5%",left:"60%",transform:"rotate(25deg)"}} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6.5 6.5h11M6.5 17.5h11"/>
+          <rect x="2" y="4.5" width="3" height="6" rx="1"/><rect x="2" y="13.5" width="3" height="6" rx="1"/>
+          <rect x="19" y="4.5" width="3" height="6" rx="1"/><rect x="19" y="13.5" width="3" height="6" rx="1"/>
+          <line x1="3.5" y1="10.5" x2="3.5" y2="13.5"/><line x1="20.5" y1="10.5" x2="20.5" y2="13.5"/>
+        </svg>
+      </div>
+
+      {/* Decorative gym icons - right side */}
+      <div className="fixed right-0 top-0 bottom-0 pointer-events-none hidden lg:block" style={{width:"calc((100% - 32rem) / 2)", opacity:"var(--deco-opacity)"}}>
+        {/* Kettlebell */}
+        <svg className="absolute" style={{top:"6%",left:"35%",transform:"rotate(12deg)"}} width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2a4 4 0 0 0-4 4c0 1.5.8 2.8 2 3.5L8 14h8l-2-4.5c1.2-.7 2-2 2-3.5a4 4 0 0 0-4-4z"/>
+          <ellipse cx="12" cy="18" rx="5" ry="4"/>
+        </svg>
+        {/* Lightning */}
+        <svg className="absolute" style={{top:"20%",left:"60%",transform:"rotate(-10deg)"}} width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        {/* Water drop */}
+        <svg className="absolute" style={{top:"34%",left:"25%",transform:"rotate(5deg)"}} width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+        </svg>
+        {/* Bicep */}
+        <svg className="absolute" style={{top:"46%",left:"55%",transform:"rotate(-18deg)"}} width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 16c1-1 2-3 2-6s2-5 5-5c2 0 3 1 4 3s2 4 5 4"/><path d="M21 14c-1 1-2 3-4 4s-4 2-6 2-4-.5-5.5-2"/>
+          <path d="M7 21c-1-1-2-2-2.5-3.5"/>
+        </svg>
+        {/* Target */}
+        <svg className="absolute" style={{top:"60%",left:"30%",transform:"rotate(15deg)"}} width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+        </svg>
+        {/* Medal/Trophy */}
+        <svg className="absolute" style={{top:"74%",left:"60%",transform:"rotate(-5deg)"}} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/><circle cx="12" cy="8" r="2"/>
+        </svg>
+        {/* Heartbeat */}
+        <svg className="absolute" style={{top:"88%",left:"35%",transform:"rotate(8deg)"}} width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 12h4l3-9 4 18 3-9h6"/>
+        </svg>
+        {/* Small flame */}
+        <svg className="absolute" style={{top:"10%",left:"15%",transform:"rotate(-20deg)"}} width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+
+      <div className="relative max-w-lg mx-auto px-4 py-5 flex-1 overflow-hidden flex flex-col w-full rounded-3xl my-3" style={{border:"1px solid var(--border)", background:"var(--card)"}}>
         {/* Header */}
-        <header className="flex items-center justify-between mb-5">
+        <header className="flex items-center justify-between mb-5 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg" style={{boxShadow:`0 8px 24px ${theme==="dark"?"rgba(245,158,11,0.2)":"rgba(245,158,11,0.15)"}`}}><I.Fire/></div>
             <div>
@@ -190,7 +271,7 @@ export default function App() {
         </header>
 
         {/* Date Nav */}
-        <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex items-center justify-between mb-4 px-1 shrink-0">
           <button onClick={()=>setSel(new Date(sel.getTime()-864e5))} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{background:"var(--subtle)"}}><I.Left/></button>
           <div className="text-center cursor-pointer" onClick={()=>setShowCal(!showCal)}>
             <div className="text-sm font-semibold">{isT ? "Today" : fmtNice(sel)}</div>
@@ -203,7 +284,7 @@ export default function App() {
         {showCal && <Calendar sel={sel} onPick={setSel} data={all} onClose={()=>setShowCal(false)}/>}
 
         {/* Macros */}
-        <section className="mb-5 p-4 rounded-3xl" style={{background:"var(--card)", border:"1px solid var(--border)"}}>
+        <section className="mb-5 p-4 rounded-3xl shrink-0" style={{background:"var(--card)", border:"1px solid var(--border)"}}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.2em] font-medium" style={{opacity:"var(--dim)"}}>Daily Macros</h2>
             <span className="text-[11px] tabular-nums" style={{opacity:"var(--faint)"}}>{Math.round(macros.calories)} / {goals.calories} kcal</span>
@@ -217,7 +298,7 @@ export default function App() {
         </section>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-5 p-1 rounded-2xl" style={{background:"var(--card)"}}>
+        <div className="flex gap-1 mb-3 p-1 rounded-2xl shrink-0" style={{background:"var(--card)"}}>
           {[{id:"meals",label:"Meals",icon:<I.Fire/>,badge:ml},{id:"workout",label:"Workout",icon:<I.Dumbbell/>}].map(t=>(
             <button key={t.id} onClick={()=>setTab(t.id)}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
@@ -228,6 +309,8 @@ export default function App() {
           ))}
         </div>
 
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
         {/* ═══ MEALS ═══ */}
         {tab==="meals" && (
           <div className="space-y-3">
@@ -408,6 +491,7 @@ export default function App() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
