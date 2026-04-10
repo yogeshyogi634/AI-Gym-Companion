@@ -17,10 +17,11 @@ export default function App() {
   const [workoutDone, setWorkoutDone] = useState({});
   const [workout, setWorkout] = useState([]);
   const [loadSlot, setLoadSlot] = useState(null);
+  const [editing, setEditing] = useState({});
   const [tab, setTab] = useState("meals");
   const [showCal, setShowCal] = useState(false);
   const [dayPlan, setDayPlan] = useState(() => getWorkoutForDate(new Date()));
-  const [theme, setTheme] = useState(() => localStorage.getItem("forge_theme") || "dark");
+  const [theme, setTheme] = useState(() => localStorage.getItem("gymzy_theme") || "dark");
 
   const fileRefs = {
     morning: React.useRef(null),
@@ -50,7 +51,7 @@ export default function App() {
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("forge_theme", theme);
+    localStorage.setItem("gymzy_theme", theme);
   }, [theme]);
 
   function toggleTheme() {
@@ -100,6 +101,7 @@ export default function App() {
         const mealData = { text: food, macros: p, items: p.items || [] };
         setAll(prev => ({ ...prev, [dk]: { ...(prev[dk]||{}), [slot]: mealData } }));
         setInputs(prev => ({ ...prev, [slot]:"" }));
+        setEditing(prev => { const u = { ...prev }; delete u[slot]; return u; });
         saveMeal(dk, slot, mealData);
       } catch(e) {
         console.error("Failed parsing:", e, "\nRaw Response:", r);
@@ -127,6 +129,7 @@ export default function App() {
           const foodNames = (p.items || []).map(it => `${it.name} (${it.qty})`).join(", ");
           const mealData = { text: foodNames || "Photo meal", macros: p, items: p.items || [] };
           setAll(prev => ({ ...prev, [dk]: { ...(prev[dk] || {}), [slot]: mealData } }));
+          setEditing(prev => { const u = { ...prev }; delete u[slot]; return u; });
           saveMeal(dk, slot, mealData);
         } catch (e) {
           console.error("Failed parsing image response:", e, "\nRaw:", r);
@@ -140,11 +143,21 @@ export default function App() {
   function editMeal(slot) {
     const sv = dd[slot];
     if (!sv) return;
+    setEditing(prev => ({ ...prev, [slot]: sv }));
     setInputs(prev => ({ ...prev, [slot]: sv.text }));
     setAll(prev => {
       const u = { ...prev }; if(u[dk]) { const d={...u[dk]}; delete d[slot]; u[dk]=d; } return u;
     });
     apiDeleteMeal(dk, slot);
+  }
+
+  function cancelEdit(slot) {
+    const orig = editing[slot];
+    if (!orig) return;
+    setAll(prev => ({ ...prev, [dk]: { ...(prev[dk]||{}), [slot]: orig } }));
+    saveMeal(dk, slot, orig);
+    setInputs(prev => ({ ...prev, [slot]: "" }));
+    setEditing(prev => { const u = { ...prev }; delete u[slot]; return u; });
   }
 
   function removeMeal(slot) {
@@ -253,7 +266,7 @@ export default function App() {
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg" style={{boxShadow:`0 8px 24px ${theme==="dark"?"rgba(245,158,11,0.2)":"rgba(245,158,11,0.15)"}`}}><I.Fire/></div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight leading-none" style={{fontFamily:"'Outfit',sans-serif"}}>FORGE</h1>
+              <h1 className="text-xl font-extrabold tracking-tight leading-none" style={{fontFamily:"'Outfit',sans-serif"}}>GYMZY</h1>
               <p className="text-[9px] tracking-[0.25em] uppercase mt-0.5" style={{opacity:"var(--faint)"}}>AI Gym Companion</p>
             </div>
           </div>
@@ -358,11 +371,22 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="px-4 pb-3.5 pt-1.5">
+                      {editing[s.key] && (
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-medium text-amber-400">Editing meal...</span>
+                          <button onClick={()=>cancelEdit(s.key)}
+                            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg hover:text-red-400 transition-all"
+                            style={{background:"var(--card)", opacity:0.7}}
+                            title="Cancel edit">
+                            <I.X/> Cancel
+                          </button>
+                        </div>
+                      )}
                       <div className="flex gap-2 items-end">
                         <textarea rows={2} placeholder={s.ph} value={inputs[s.key]}
                           onChange={e=>setInputs(p=>({...p,[s.key]:e.target.value}))}
                           className="flex-1 rounded-xl px-3 py-2.5 resize-none outline-none transition-colors text-sm"
-                          style={{border:`1px solid var(--input-border)`}}
+                          style={{border: editing[s.key] ? `1px solid #f59e0b` : `1px solid var(--input-border)`}}
                           />
                         <div className="flex flex-col gap-1.5">
                           <button onClick={()=>calc(s.key)}
