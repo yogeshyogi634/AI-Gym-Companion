@@ -4,7 +4,8 @@ import Ring from "./components/Ring";
 import Calendar from "./components/Calendar";
 import WCard from "./components/WCard";
 import { fmtKey, fmtNice, same } from "./utils/dateUtils";
-import { askGemini } from "./api";
+import { askGemini, fetchAllMeals, saveMeal, deleteMeal as apiDeleteMeal, fetchAllWorkouts, saveWorkoutDone } from "./api";
+import { getWorkoutForDate } from "./data/workouts";
 
 import "./index.css";
 
@@ -13,12 +14,13 @@ export default function App() {
   const [all, setAll] = useState({});
   const [inputs, setInputs] = useState({ morning:"", afternoon:"", night:"", postworkout:"" });
   const [macros, setMacros] = useState({ calories:0, protein:0, carbs:0, fat:0, fiber:0 });
+  const [workoutDone, setWorkoutDone] = useState({});
   const [workout, setWorkout] = useState([]);
   const [loadSlot, setLoadSlot] = useState(null);
-  const [loadW, setLoadW] = useState(false);
   const [tab, setTab] = useState("meals");
-  const [wDone, setWDone] = useState(false);
   const [showCal, setShowCal] = useState(false);
+  const [dayPlan, setDayPlan] = useState(() => getWorkoutForDate(new Date()));
+  const [theme, setTheme] = useState(() => localStorage.getItem("forge_theme") || "dark");
 
   const dk = fmtKey(sel);
   const dd = all[dk] || {};
@@ -32,6 +34,23 @@ export default function App() {
 
   const goals = { calories:2500, protein:150, carbs:300, fat:80, fiber:35 };
 
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("forge_theme", theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme(t => t === "dark" ? "light" : "dark");
+  }
+
+  // Load all data from MongoDB on mount
+  useEffect(() => {
+    fetchAllMeals().then(data => setAll(data));
+    fetchAllWorkouts().then(data => setWorkoutDone(data));
+  }, []);
+
+  // Recalculate macros
   useEffect(() => {
     const d = all[dk] || {};
     const t = { calories:0, protein:0, carbs:0, fat:0, fiber:0 };
@@ -40,6 +59,14 @@ export default function App() {
     });
     setMacros(t);
   }, [dk, all]);
+
+  // Load workout for selected date, restoring done states
+  useEffect(() => {
+    const plan = getWorkoutForDate(sel);
+    setDayPlan(plan);
+    const saved = workoutDone[dk] || {};
+    setWorkout(plan.exercises.map((e, i) => ({ ...e, done: !!saved[i] })));
+  }, [dk, workoutDone]);
 
   async function calc(slot) {
     const food = inputs[slot];
@@ -57,9 +84,11 @@ export default function App() {
           clean = clean.substring(first, last + 1);
         }
         const p = JSON.parse(clean);
-        setAll(prev => ({ ...prev, [dk]: { ...(prev[dk]||{}), [slot]: { text:food, macros:p, items:p.items||[] } } }));
+        const mealData = { text: food, macros: p, items: p.items || [] };
+        setAll(prev => ({ ...prev, [dk]: { ...(prev[dk]||{}), [slot]: mealData } }));
         setInputs(prev => ({ ...prev, [slot]:"" }));
-      } catch(e) { 
+        saveMeal(dk, slot, mealData);
+      } catch(e) {
         console.error("Failed parsing:", e, "\nRaw Response:", r);
         alert("Failed to parse the response! Check the console. Raw output was: " + r.slice(0, 100) + "...");
       }
@@ -70,21 +99,7 @@ export default function App() {
     setAll(prev => {
       const u = { ...prev }; if(u[dk]) { const d={...u[dk]}; delete d[slot]; u[dk]=d; } return u;
     });
-  }
-
-  async function genW() {
-    setLoadW(true);
-    const dn = sel.toLocaleDateString("en-US",{weekday:"long"});
-    const sys = `You are a gym workout planner. Respond ONLY with a JSON array: [{"name":"Bench Press","detail":"4 sets × 10 reps · 90s rest","muscle":"Chest"}]. Include 6-8 exercises with warmup and cooldown. No markdown, just JSON array.`;
-    const mc = macros.calories > 0 ? `Today's intake: ${Math.round(macros.calories)} cal, ${Math.round(macros.protein)}g protein.` : "";
-    const r = await askGemini(`Create a gym workout for ${dn}. ${mc} Use push/pull/legs or upper/lower split. Include sets, reps, rest.`, sys);
-    setLoadW(false);
-    if(r) {
-      try {
-        const p = JSON.parse(r.replace(/```json|```/g,"").trim());
-        setWorkout(p.map(e=>({...e,done:false}))); setWDone(true);
-      } catch(e) { console.error("Failed to parse workout response:", e); }
-    }
+    apiDeleteMeal(dk, slot);
   }
 
   const cc = workout.filter(e=>e.done).length;
@@ -92,47 +107,54 @@ export default function App() {
   const isT = same(sel, new Date());
 
   return (
-    <div className="min-h-screen text-white" style={{ background:"linear-gradient(160deg,#06060a 0%,#0b0e14 40%,#0f1219 100%)", fontFamily:"'DM Sans',sans-serif" }}>
+    <div className="min-h-screen transition-colors duration-300" style={{ background:"var(--bg-page)", color:"var(--text)", fontFamily:"'DM Sans',sans-serif" }}>
       {/* Ambient */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full opacity-[0.02]" style={{background:"radial-gradient(circle,#f59e0b,transparent 70%)"}}/>
-        <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full opacity-[0.015]" style={{background:"radial-gradient(circle,#22c55e,transparent 70%)"}}/>
+        <div className="absolute -top-48 -right-48 w-[500px] h-[500px] rounded-full" style={{opacity:"var(--ambient-1)", background:"radial-gradient(circle,#f59e0b,transparent 70%)"}}/>
+        <div className="absolute -bottom-48 -left-48 w-[500px] h-[500px] rounded-full" style={{opacity:"var(--ambient-2)", background:"radial-gradient(circle,#22c55e,transparent 70%)"}}/>
       </div>
 
       <div className="relative max-w-lg mx-auto px-4 py-5 pb-24">
         {/* Header */}
         <header className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20"><I.Fire/></div>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg" style={{boxShadow:`0 8px 24px ${theme==="dark"?"rgba(245,158,11,0.2)":"rgba(245,158,11,0.15)"}`}}><I.Fire/></div>
             <div>
               <h1 className="text-xl font-extrabold tracking-tight leading-none" style={{fontFamily:"'Outfit',sans-serif"}}>FORGE</h1>
-              <p className="text-[9px] tracking-[0.25em] uppercase opacity-20 mt-0.5">AI Gym Companion</p>
+              <p className="text-[9px] tracking-[0.25em] uppercase mt-0.5" style={{opacity:"var(--faint)"}}>AI Gym Companion</p>
             </div>
           </div>
-          <button onClick={()=>setShowCal(!showCal)}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${showCal?"bg-amber-500 text-black shadow-lg shadow-amber-500/20":"bg-white/[0.05] text-white/35 hover:bg-white/[0.08]"}`}>
-            <I.Cal/>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all" style={{background:"var(--subtle)", color:`color-mix(in srgb, var(--text) 45%, transparent)`}}>
+              {theme==="dark" ? <I.ThemeSun/> : <I.ThemeMoon/>}
+            </button>
+            <button onClick={()=>setShowCal(!showCal)}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${showCal?"bg-amber-500 text-black shadow-lg":"" }`}
+              style={showCal?{boxShadow:"0 8px 24px var(--shadow-glow)"}:{background:"var(--subtle)", color:`color-mix(in srgb, var(--text) 45%, transparent)`}}>
+              <I.Cal/>
+            </button>
+          </div>
         </header>
 
         {/* Date Nav */}
         <div className="flex items-center justify-between mb-4 px-1">
-          <button onClick={()=>setSel(new Date(sel.getTime()-864e5))} className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center hover:bg-white/[0.08] transition-colors"><I.Left/></button>
+          <button onClick={()=>setSel(new Date(sel.getTime()-864e5))} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{background:"var(--subtle)"}}><I.Left/></button>
           <div className="text-center cursor-pointer" onClick={()=>setShowCal(!showCal)}>
             <div className="text-sm font-semibold">{isT ? "Today" : fmtNice(sel)}</div>
-            <div className="text-[10px] opacity-25 mt-0.5 tabular-nums">{fmtKey(sel)}</div>
+            <div className="text-[10px] mt-0.5 tabular-nums" style={{opacity:"var(--faint)"}}>{fmtKey(sel)}</div>
           </div>
-          <button onClick={()=>setSel(new Date(sel.getTime()+864e5))} className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center hover:bg-white/[0.08] transition-colors"><I.Right/></button>
+          <button onClick={()=>setSel(new Date(sel.getTime()+864e5))} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={{background:"var(--subtle)"}}><I.Right/></button>
         </div>
 
         {/* Calendar */}
         {showCal && <Calendar sel={sel} onPick={setSel} data={all} onClose={()=>setShowCal(false)}/>}
 
         {/* Macros */}
-        <section className="mb-5 p-4 rounded-3xl bg-white/[0.025] border border-white/[0.06]">
+        <section className="mb-5 p-4 rounded-3xl" style={{background:"var(--card)", border:"1px solid var(--border)"}}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[10px] uppercase tracking-[0.2em] opacity-30 font-medium">Daily Macros</h2>
-            <span className="text-[11px] opacity-20 tabular-nums">{Math.round(macros.calories)} / {goals.calories} kcal</span>
+            <h2 className="text-[10px] uppercase tracking-[0.2em] font-medium" style={{opacity:"var(--dim)"}}>Daily Macros</h2>
+            <span className="text-[11px] tabular-nums" style={{opacity:"var(--faint)"}}>{Math.round(macros.calories)} / {goals.calories} kcal</span>
           </div>
           <div className="flex justify-between px-1">
             <Ring value={macros.calories} max={goals.calories} color="#f59e0b" label="Cal" unit="kcal"/>
@@ -143,11 +165,11 @@ export default function App() {
         </section>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-5 p-1 rounded-2xl bg-white/[0.025]">
+        <div className="flex gap-1 mb-5 p-1 rounded-2xl" style={{background:"var(--card)"}}>
           {[{id:"meals",label:"Meals",icon:<I.Fire/>,badge:ml},{id:"workout",label:"Workout",icon:<I.Dumbbell/>}].map(t=>(
             <button key={t.id} onClick={()=>setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${
-                tab===t.id?"bg-white/[0.08] text-white":"text-white/25 hover:text-white/45"}`}>
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
+              style={tab===t.id ? {background:"var(--tab-active)", color:"var(--text)"} : {color:"var(--tab-text)"}}>
               {t.icon}{t.label}
               {t.badge>0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 tabular-nums">{t.badge}/4</span>}
             </button>
@@ -160,25 +182,25 @@ export default function App() {
             {slots.map(s => {
               const sv = dd[s.key];
               return (
-                <div key={s.key} className="rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden">
+                <div key={s.key} className="rounded-2xl overflow-hidden" style={{background:"var(--card-alt)", border:"1px solid var(--border)"}}>
                   <div className={`flex items-center gap-2.5 px-4 pt-3 pb-2 bg-gradient-to-r ${s.grad}`}>
-                    <span className="opacity-55">{s.icon}</span>
+                    <span style={{opacity:"var(--muted)"}}>{s.icon}</span>
                     <span className="text-[13px] font-bold tracking-wide">{s.label}</span>
-                    {sv && <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-white/[0.06] text-emerald-400 font-semibold tabular-nums">{Math.round(sv.macros.calories)} kcal</span>}
+                    {sv && <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full text-emerald-400 font-semibold tabular-nums" style={{background:"var(--badge-bg)"}}>{Math.round(sv.macros.calories)} kcal</span>}
                   </div>
 
                   {sv ? (
                     <div className="px-4 pb-3.5 pt-1.5">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-[13px] opacity-50 leading-relaxed">{sv.text}</p>
-                        <button onClick={()=>removeMeal(s.key)} className="opacity-20 hover:opacity-70 hover:text-red-400 transition-all p-1 shrink-0"><I.Trash/></button>
+                        <p className="text-[13px] leading-relaxed" style={{opacity:"var(--muted)"}}>{sv.text}</p>
+                        <button onClick={()=>removeMeal(s.key)} className="hover:text-red-400 transition-all p-1 shrink-0" style={{opacity:0.2}}><I.Trash/></button>
                       </div>
                       {sv.items?.length>0 && (
                         <div className="mt-2.5 space-y-1">
                           {sv.items.map((it,i)=>(
-                            <div key={i} className="flex items-center justify-between text-[11px] py-1.5 px-3 rounded-lg bg-white/[0.025]">
-                              <span className="opacity-50 truncate mr-2">{it.name} <span className="opacity-30">({it.qty})</span></span>
-                              <div className="flex gap-2 opacity-35 tabular-nums whitespace-nowrap text-[10px]">
+                            <div key={i} className="flex items-center justify-between text-[11px] py-1.5 px-3 rounded-lg" style={{background:"var(--card)"}}>
+                              <span className="truncate mr-2" style={{opacity:"var(--muted)"}}>{it.name} <span style={{opacity:0.6}}>({it.qty})</span></span>
+                              <div className="flex gap-2 tabular-nums whitespace-nowrap text-[10px]" style={{opacity:"var(--dim)"}}>
                                 <span>{it.cal}cal</span>
                                 <span className="text-red-400">{it.protein}p</span>
                                 <span className="text-blue-400">{it.carbs}c</span>
@@ -191,7 +213,7 @@ export default function App() {
                       <div className="flex gap-3 mt-2.5">
                         {[{l:"P",v:sv.macros.protein,c:"#ef4444"},{l:"C",v:sv.macros.carbs,c:"#3b82f6"},{l:"F",v:sv.macros.fat,c:"#a855f7"}].map(m=>(
                           <div key={m.l} className="flex items-center gap-1.5 text-[10px]">
-                            <div className="w-1.5 h-1.5 rounded-full" style={{background:m.c}}/><span className="opacity-35">{m.l}: {Math.round(m.v)}g</span>
+                            <div className="w-1.5 h-1.5 rounded-full" style={{background:m.c}}/><span style={{opacity:"var(--dim)"}}>{m.l}: {Math.round(m.v)}g</span>
                           </div>
                         ))}
                       </div>
@@ -201,11 +223,13 @@ export default function App() {
                       <div className="flex gap-2 items-end">
                         <textarea rows={2} placeholder={s.ph} value={inputs[s.key]}
                           onChange={e=>setInputs(p=>({...p,[s.key]:e.target.value}))}
-                          className="flex-1 rounded-xl px-3 py-2.5 resize-none border border-white/[0.08] focus:!border-amber-500/40 outline-none transition-colors text-sm"
+                          className="flex-1 rounded-xl px-3 py-2.5 resize-none outline-none transition-colors text-sm"
+                          style={{border:`1px solid var(--input-border)`}}
                           />
                         <button onClick={()=>calc(s.key)}
                           disabled={!inputs[s.key].trim()||loadSlot===s.key}
-                          className="shrink-0 h-10 w-10 rounded-xl bg-gradient-to-b from-amber-400 to-orange-500 text-black flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-orange-500/20 transition-all active:scale-95">
+                          className="shrink-0 h-10 w-10 rounded-xl bg-gradient-to-b from-amber-400 to-orange-500 text-black flex items-center justify-center disabled:opacity-25 disabled:cursor-not-allowed hover:shadow-lg transition-all active:scale-95"
+                          style={{boxShadow:"0 4px 16px var(--shadow-glow)"}}>
                           {loadSlot===s.key?<I.Loader/>:<I.Sparkle/>}
                         </button>
                       </div>
@@ -217,16 +241,16 @@ export default function App() {
 
             {/* Daily bars */}
             {macros.calories>0 && (
-              <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06]">
-                <div className="text-[10px] uppercase tracking-widest opacity-20 mb-3 font-medium">Daily Totals</div>
+              <div className="p-4 rounded-2xl" style={{background:"var(--card)", border:"1px solid var(--border)"}}>
+                <div className="text-[10px] uppercase tracking-widest mb-3 font-medium" style={{opacity:"var(--faint)"}}>Daily Totals</div>
                 <div className="space-y-2">
                   {[{l:"Protein",v:macros.protein,m:goals.protein,c:"#ef4444"},{l:"Carbs",v:macros.carbs,m:goals.carbs,c:"#3b82f6"},{l:"Fat",v:macros.fat,m:goals.fat,c:"#a855f7"},{l:"Fiber",v:macros.fiber,m:goals.fiber,c:"#22c55e"}].map(x=>(
                     <div key={x.l}>
                       <div className="flex justify-between text-[11px] mb-1">
-                        <span className="opacity-40">{x.l}</span>
-                        <span className="tabular-nums opacity-30">{Math.round(x.v)}g / {x.m}g</span>
+                        <span style={{opacity:"var(--dim)"}}>{x.l}</span>
+                        <span className="tabular-nums" style={{opacity:"var(--faint)"}}>{Math.round(x.v)}g / {x.m}g</span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{background:"var(--progress-track)"}}>
                         <div className="h-full rounded-full transition-all duration-700" style={{width:`${Math.min((x.v/x.m)*100,100)}%`,background:x.c}}/>
                       </div>
                     </div>
@@ -240,37 +264,67 @@ export default function App() {
         {/* ═══ WORKOUT ═══ */}
         {tab==="workout" && (
           <div>
-            {!wDone ? (
+            {/* Day label + split badge */}
+            <div className="flex items-center justify-between mb-4 px-1">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                  dayPlan.type==="Push"?"bg-red-500/15 text-red-400":
+                  dayPlan.type==="Pull"?"bg-blue-500/15 text-blue-400":
+                  dayPlan.type==="Legs"?"bg-purple-500/15 text-purple-400":
+                  "bg-emerald-500/15 text-emerald-400"
+                }`}>{dayPlan.type}</span>
+                <span className="text-sm font-semibold" style={{opacity:0.6}}>{dayPlan.label}</span>
+              </div>
+              <span className="text-[10px] uppercase tracking-widest" style={{opacity:"var(--faint)"}}>{sel.toLocaleDateString("en-US",{weekday:"long"})}</span>
+            </div>
+
+            {/* Weekly split overview */}
+            <div className="flex gap-1 mb-5">
+              {["M","T","W","T","F","S","S"].map((d,i)=>{
+                const colors = ["bg-red-500","bg-blue-500","bg-purple-500","bg-red-500","bg-blue-500","bg-purple-500","bg-white/20"];
+                const currentIdx = sel.getDay()===0?6:sel.getDay()-1;
+                return (
+                  <div key={i} className="flex-1 text-center py-1.5 rounded-lg text-[10px] font-medium transition-all"
+                    style={i===currentIdx ? {background:"var(--week-active)", color:"var(--text)"} : {color:"var(--week-text)"}}>
+                    <div>{d}</div>
+                    <div className={`w-1.5 h-1.5 rounded-full mx-auto mt-1 ${colors[i]}`} style={{opacity: i===currentIdx?1:0.3}}/>
+                  </div>
+                );
+              })}
+            </div>
+
+            {dayPlan.type==="Rest" ? (
               <div className="text-center py-14">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center opacity-25"><I.Dumbbell/></div>
-                <p className="text-sm opacity-25 mb-1">Generate your workout for</p>
-                <p className="text-base font-bold text-white/70 mb-1">{fmtNice(sel)}</p>
-                {macros.calories>0 && <p className="text-[11px] opacity-20 mb-5">Based on {Math.round(macros.calories)} kcal logged</p>}
-                {macros.calories===0 && <p className="text-[11px] opacity-15 mb-5">Log meals first for a tailored plan</p>}
-                <button onClick={genW} disabled={loadW}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-b from-amber-400 to-orange-500 text-black font-bold text-sm hover:shadow-lg hover:shadow-orange-500/25 transition-all active:scale-95 disabled:opacity-50">
-                  {loadW?<><I.Loader/> Generating...</>:<><I.Sparkle/> Generate Workout</>}
-                </button>
+                <div className="text-4xl mb-3">😴</div>
+                <h3 className="text-lg font-bold text-emerald-400 mb-1">Rest Day</h3>
+                <p className="text-sm" style={{opacity:"var(--dim)"}}>Recovery is when muscles grow.</p>
+                <p className="text-xs mt-2" style={{opacity:"var(--faint)"}}>Stretch, hydrate, and eat well.</p>
               </div>
             ) : (
               <div>
-                <div className="flex items-center justify-between mb-4 px-1">
-                  <span className="text-xs opacity-35 tabular-nums">{cc}/{workout.length}</span>
-                  <div className="flex-1 mx-3 h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className="text-xs tabular-nums" style={{opacity:"var(--dim)"}}>{cc}/{workout.length} exercises</span>
+                  <div className="flex-1 mx-3 h-1.5 rounded-full overflow-hidden" style={{background:"var(--progress-track)"}}>
                     <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
                       style={{width:`${workout.length>0?(cc/workout.length)*100:0}%`}}/>
                   </div>
-                  <button onClick={()=>{setWDone(false);setWorkout([]);}}
-                    className="text-[11px] opacity-25 hover:opacity-55 transition-opacity px-2 py-1 rounded-lg hover:bg-white/[0.04]">↻ New</button>
                 </div>
                 <div className="space-y-2">
-                  {workout.map((ex,i)=><WCard key={i} ex={ex} i={i} onToggle={()=>setWorkout(p=>p.map((e,j)=>j===i?{...e,done:!e.done}:e))}/>)}
+                  {workout.map((ex,i)=><WCard key={i} ex={ex} i={i} onToggle={()=>{
+                    setWorkout(p=>{
+                      const u=p.map((e,j)=>j===i?{...e,done:!e.done}:e);
+                      const doneMap = Object.fromEntries(u.map((e,j)=>[j,e.done]));
+                      setWorkoutDone(prev=>({...prev,[dk]:doneMap}));
+                      saveWorkoutDone(dk, doneMap);
+                      return u;
+                    });
+                  }}/>)}
                 </div>
                 {cc===workout.length && workout.length>0 && (
                   <div className="mt-6 p-5 rounded-2xl bg-gradient-to-b from-emerald-500/10 to-emerald-500/[0.02] border border-emerald-500/20 text-center">
                     <div className="text-3xl mb-2">💪</div>
                     <h3 className="font-bold text-emerald-400 text-lg">Workout Complete!</h3>
-                    <p className="text-xs opacity-30 mt-1">
+                    <p className="text-xs mt-1" style={{opacity:"var(--dim)"}}>
                       {dd.postworkout ? "Post-workout meal logged. Recovery mode: ON." : "Don't forget to log your post-workout meal!"}
                     </p>
                   </div>

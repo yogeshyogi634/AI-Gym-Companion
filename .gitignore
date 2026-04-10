@@ -88,3 +88,7 @@ venv.bak/
 # Temporary files
 *.tmp
 *.temp
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep

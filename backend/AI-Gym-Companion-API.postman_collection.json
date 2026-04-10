@@ -1,0 +1,517 @@
+{
+  "info": {
+    "name": "AI Gym Companion API",
+    "description": "Complete API collection for testing AI Gym Companion backend endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "uploadId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "filename",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains text', function () {",
+              "    pm.expect(pm.response.text()).to.not.be.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"prompt\": \"health check\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/chat",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chat"
+          ]
+        },
+        "description": "Test server health using existing chat endpoint"
+      },
+      "response": []
+    },
+    {
+      "name": "Upload File",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Upload successful', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.success).to.be.true;",
+              "    pm.expect(response.upload).to.have.property('id');",
+              "    pm.expect(response.upload).to.have.property('filename');",
+              "    ",
+              "    // Save upload ID and filename for other requests",
+              "    pm.collectionVariables.set('uploadId', response.upload.id);",
+              "    pm.collectionVariables.set('filename', response.upload.filename);",
+              "});",
+              "",
+              "pm.test('Response contains expected fields', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.upload).to.have.property('originalName');",
+              "    pm.expect(response.upload).to.have.property('mimetype');",
+              "    pm.expect(response.upload).to.have.property('size');",
+              "    pm.expect(response.upload).to.have.property('uploadDate');",
+              "    pm.expect(response.upload).to.have.property('url');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Select a file to upload"
+            },
+            {
+              "key": "metadata",
+              "value": "{\"description\":\"Postman test upload\",\"category\":\"testing\",\"tags\":[\"postman\",\"api\",\"test\"]}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/upload",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "upload"
+          ]
+        },
+        "description": "Upload a file with metadata to the server"
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Uploads",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains uploads array', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('uploads');",
+              "    pm.expect(response.uploads).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Each upload has required fields', function () {",
+              "    const response = pm.response.json();",
+              "    if (response.uploads.length > 0) {",
+              "        const upload = response.uploads[0];",
+              "        pm.expect(upload).to.have.property('id');",
+              "        pm.expect(upload).to.have.property('filename');",
+              "        pm.expect(upload).to.have.property('originalName');",
+              "        pm.expect(upload).to.have.property('mimetype');",
+              "        pm.expect(upload).to.have.property('size');",
+              "        pm.expect(upload).to.have.property('uploadDate');",
+              "        pm.expect(upload).to.have.property('url');",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/uploads",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "uploads"
+          ]
+        },
+        "description": "Retrieve all uploaded files"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Specific Upload",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains upload details', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('id');",
+              "    pm.expect(response).to.have.property('filename');",
+              "    pm.expect(response).to.have.property('originalName');",
+              "    pm.expect(response).to.have.property('mimetype');",
+              "    pm.expect(response).to.have.property('size');",
+              "    pm.expect(response).to.have.property('uploadDate');",
+              "    pm.expect(response).to.have.property('metadata');",
+              "    pm.expect(response).to.have.property('url');",
+              "});",
+              "",
+              "pm.test('Upload ID matches requested ID', function () {",
+              "    const response = pm.response.json();",
+              "    const requestedId = pm.collectionVariables.get('uploadId');",
+              "    pm.expect(response.id).to.equal(requestedId);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/uploads/{{uploadId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "uploads",
+            "{{uploadId}}"
+          ]
+        },
+        "description": "Retrieve a specific upload by ID"
+      },
+      "response": []
+    },
+    {
+      "name": "Download File",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains file content', function () {",
+              "    pm.expect(pm.response.text()).to.not.be.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/uploads/{{filename}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "uploads",
+            "{{filename}}"
+          ]
+        },
+        "description": "Download the actual file content"
+      },
+      "response": []
+    },
+    {
+      "name": "Upload Without File (Should Fail)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message indicates no file', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('error');",
+              "    pm.expect(response.error.toLowerCase()).to.include('file');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "metadata",
+              "value": "{\"description\":\"Test without file\"}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/upload",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "upload"
+          ]
+        },
+        "description": "Test upload without providing a file - should return error"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Invalid Upload ID (Should Fail)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404 or 400', function () {",
+              "    pm.expect([400, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "pm.test('Error response contains error message', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('error');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/uploads/invalid123",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "uploads",
+            "invalid123"
+          ]
+        },
+        "description": "Test with invalid upload ID - should return error"
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Upload",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Deletion successful', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.success).to.be.true;",
+              "    pm.expect(response).to.have.property('message');",
+              "});",
+              "",
+              "pm.test('Success message contains delete confirmation', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response.message.toLowerCase()).to.include('delete');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/uploads/{{uploadId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "uploads",
+            "{{uploadId}}"
+          ]
+        },
+        "description": "Delete an uploaded file"
+      },
+      "response": []
+    },
+    {
+      "name": "Verify Deletion (Should Fail)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Error indicates upload not found', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('error');",
+              "    pm.expect(response.error.toLowerCase()).to.include('not found');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/uploads/{{uploadId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "uploads",
+            "{{uploadId}}"
+          ]
+        },
+        "description": "Verify that the deleted upload is no longer accessible"
+      },
+      "response": []
+    },
+    {
+      "name": "Chat Endpoint Test",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains text field', function () {",
+              "    const response = pm.response.json();",
+              "    pm.expect(response).to.have.property('text');",
+              "    pm.expect(response).to.have.property('usedModel');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"prompt\": \"What is the capital of France?\",\n    \"systemInstruction\": \"You are a helpful assistant that provides concise answers.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/chat",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chat"
+          ]
+        },
+        "description": "Test the chat endpoint with a simple question"
+      },
+      "response": []
+    }
+  ]
+}
