@@ -9,6 +9,9 @@ import { fileURLToPath } from 'url';
 import Upload from './models/Upload.js';
 import Meal from './models/Meal.js';
 import WorkoutLog from './models/WorkoutLog.js';
+import BodyWeight from './models/BodyWeight.js';
+import WaterIntake from './models/WaterIntake.js';
+import UserGoals from './models/UserGoals.js';
 
 dotenv.config();
 
@@ -247,6 +250,100 @@ app.get('/api/workouts', async (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch workout logs' });
+  }
+});
+
+// ═══ BODY WEIGHT ═══
+
+// Get weight for a date
+app.get('/api/weight/:date', async (req, res) => {
+  try {
+    const entry = await BodyWeight.findOne({ date: req.params.date });
+    res.json(entry || null);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch weight' });
+  }
+});
+
+// Save weight for a date
+app.put('/api/weight/:date', async (req, res) => {
+  try {
+    const { weight, unit } = req.body;
+    const entry = await BodyWeight.findOneAndUpdate(
+      { date: req.params.date },
+      { weight, unit: unit || 'kg' },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, entry });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save weight' });
+  }
+});
+
+// Get all weight entries (for trend)
+app.get('/api/weight', async (req, res) => {
+  try {
+    const entries = await BodyWeight.find().sort({ date: -1 }).limit(30);
+    res.json(entries);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch weight history' });
+  }
+});
+
+// ═══ WATER INTAKE ═══
+
+// Get water intake for a date
+app.get('/api/water/:date', async (req, res) => {
+  try {
+    const entry = await WaterIntake.findOne({ date: req.params.date });
+    res.json(entry || { glasses: 0 });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch water intake' });
+  }
+});
+
+// Save water intake for a date
+app.put('/api/water/:date', async (req, res) => {
+  try {
+    const { glasses } = req.body;
+    const entry = await WaterIntake.findOneAndUpdate(
+      { date: req.params.date },
+      { glasses },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, entry });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save water intake' });
+  }
+});
+
+// ═══ USER GOALS ═══
+
+// Get user goals
+app.get('/api/goals', async (req, res) => {
+  try {
+    let goals = await UserGoals.findOne({ userId: 'default' });
+    if (!goals) {
+      goals = await UserGoals.create({ userId: 'default' });
+    }
+    res.json(goals);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch goals' });
+  }
+});
+
+// Update user goals
+app.put('/api/goals', async (req, res) => {
+  try {
+    const { calories, protein, carbs, fat, fiber, waterGlasses } = req.body;
+    const goals = await UserGoals.findOneAndUpdate(
+      { userId: 'default' },
+      { calories, protein, carbs, fat, fiber, waterGlasses },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, goals });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save goals' });
   }
 });
 

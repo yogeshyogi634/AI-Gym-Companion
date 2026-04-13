@@ -75,6 +75,88 @@ export async function deleteMeal(date, slot) {
   }
 }
 
+// ═══ Body Weight ═══
+
+export async function fetchWeightHistory() {
+  try {
+    const res = await fetch(`${API}/weight`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchWeightHistory error:", e);
+    return [];
+  }
+}
+
+export async function fetchWeight(date) {
+  try {
+    const res = await fetch(`${API}/weight/${date}`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchWeight error:", e);
+    return null;
+  }
+}
+
+export async function saveWeight(date, weight, unit = 'kg') {
+  try {
+    await fetch(`${API}/weight/${date}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weight, unit }),
+    });
+  } catch (e) {
+    console.error("saveWeight error:", e);
+  }
+}
+
+// ═══ Water Intake ═══
+
+export async function fetchWater(date) {
+  try {
+    const res = await fetch(`${API}/water/${date}`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchWater error:", e);
+    return { glasses: 0 };
+  }
+}
+
+export async function saveWater(date, glasses) {
+  try {
+    await fetch(`${API}/water/${date}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ glasses }),
+    });
+  } catch (e) {
+    console.error("saveWater error:", e);
+  }
+}
+
+// ═══ User Goals ═══
+
+export async function fetchGoals() {
+  try {
+    const res = await fetch(`${API}/goals`);
+    return await res.json();
+  } catch (e) {
+    console.error("fetchGoals error:", e);
+    return null;
+  }
+}
+
+export async function saveGoals(goals) {
+  try {
+    await fetch(`${API}/goals`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(goals),
+    });
+  } catch (e) {
+    console.error("saveGoals error:", e);
+  }
+}
+
 // ═══ Workouts ═══
 
 export async function fetchAllWorkouts() {
